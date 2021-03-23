@@ -21,6 +21,7 @@ typedef struct SchedulerData {
     bool all_terminated;
 } SchedulerData;
 
+void isTerminated(SchedulerData *shared_data, std::vector<Process*> processes);
 void coreRunProcesses(uint8_t core_id, SchedulerData *data);
 int printProcessOutput(std::vector<Process*>& processes, std::mutex& mutex);
 void clearOutput(int num_lines);
@@ -84,12 +85,28 @@ int main(int argc, char **argv)
 
         // Do the following:
         //   - Get current time
+        uint64_t currTime = currentTime();
         //   - *Check if any processes need to move from NotStarted to Ready (based on elapsed time), and if so put that process in the ready queue
         //   - *Check if any processes have finished their I/O burst, and if so put that process back in the ready queue
         //   - *Check if any running process need to be interrupted (RR time slice expires or newly ready process has higher priority)
         //   - *Sort the ready queue (if needed - based on scheduling algorithm)
         //   - Determine if all processes are in the terminated state
         //   - * = accesses shared data (ready queue), so be sure to use proper synchronization
+
+        for (int i = 0; i < processes.size(); i++) {
+            if (processes[i]->getState() == Process::State::IO) {
+                std::lock_guard<std::mutex> lock(shared_data->mutex);
+                processes[i]->getState() == Process::State::Ready;
+                shared_data->ready_queue.push_back(processes[i]);
+                std::cout << shared_data->ready_queue.size() << "\n";
+                std::cout << "Processes size: " << processes.size() << "\n";
+            }
+        }
+
+        isTerminated(shared_data, processes);
+        if (shared_data->all_terminated == true) {
+            exit(0);
+        }
 
         // output process status table
         num_lines = printProcessOutput(processes, shared_data->mutex);
@@ -121,9 +138,23 @@ int main(int argc, char **argv)
     return 0;
 }
 
+void isTerminated(SchedulerData *shared_data, std::vector<Process*> processes) {
+    std::lock_guard<std::mutex> lock(shared_data->mutex);
+    int count = 0;
+    for (int i = 0; i < processes.size(); i++) {
+        if (processes[i]->getState() == Process::State::Terminated) {
+            count == count++;
+        }
+    }
+    if (count == processes.size()) {
+        shared_data->all_terminated = true;
+        exit(0);
+    }
+}
+
 void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
 {
-    // Work to be done by each core idependent of the other cores
+    // Work to be done by each core independent of the other cores
     // Repeat until all processes in terminated state:
     //   - *Get process at front of ready queue
     //   - Simulate the processes running until one of the following:
@@ -135,7 +166,34 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
     //     - *Ready queue if interrupted (be sure to modify the CPU burst time to now reflect the remaining time)
     //  - Wait context switching time
     //  - * = accesses shared data (ready queue), so be sure to use proper synchronization
-}
+
+    while (shared_data->all_terminated != true) {
+        if (shared_data->ready_queue.size() != 0) {
+            uint64_t start = currentTime();
+            uint64_t currTime = currentTime();
+            Process* currProcess;
+            {
+                std::lock_guard<std::mutex> lock(shared_data->mutex);
+                currProcess = shared_data->ready_queue.front();
+                shared_data->ready_queue.pop_front();
+            }
+
+            while(currTime - start < shared_data->time_slice && currTime - start < currProcess->getRemainingTime()) {
+                currTime = currentTime();
+            }
+
+            if (currProcess->getRemainingTime() < shared_data->time_slice/1000.0) {
+                std::lock_guard<std::mutex> lock(shared_data->mutex);
+                currProcess->setState(Process::State::Terminated, currentTime());
+                currProcess->updateProcess(currentTime());
+            } else {
+                std::lock_guard<std::mutex> lock(shared_data->mutex);
+                currProcess->setState(Process::State::IO, currentTime());
+            }
+        }
+    }
+
+} 
 
 int printProcessOutput(std::vector<Process*>& processes, std::mutex& mutex)
 {
@@ -210,3 +268,4 @@ std::string processStateToString(Process::State state)
     }
     return str;
 }
+
