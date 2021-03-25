@@ -152,18 +152,124 @@ void Process::updateBurstTime(int burst_idx, uint32_t new_time)
 
 
 // Comparator methods: used in std::list sort() method
+   
+   std::vector<Process*> processes;
+   SchedulerConfig *config = readConfigFile(argv[1]);
+   uint64_t start = currentTime();
+   uint64_t current = currentTime();
+   uint64_t end = start + getRemainingTime();
 // No comparator needed for FCFS or RR (ready queue never sorted)
 
 // SJF - comparator for sorting read queue based on shortest remaining CPU time
 bool SjfComparator::operator ()(const Process *p1, const Process *p2)
 {
-    // your code here!
-    return false; // change this!
+    //first create processes based on total remaining cPU time
+    if(p1->getRemainingTime()*1000 > p2->getRemainingTime()*1000){
+       *p2 = new Process(config->process[i], start);
+       *p1 = new Process(config->process[i], end);
+       //processes.push_back(p2);
+       //processes.push_back(p1);
+    }
+    else if(p2->getRemainingTime()*1000 > p1->getRemainingTime()*1000){ 
+      *p1 = new Process(config->process[i], start);
+      *p2 = new Process(config->process[i], end);
+      //processes.push_back(p1);
+      //processes.push_back(p2);
+    }
+    //create processes based on I/O bursts
+    else if(p2->getBurstTimes(p1->getBurstIndex()) <= 0){
+        start = p2->getRemainingTime();
+        end = p1->getRemainingTime();
+    	*p2 = new Process(config->processes[i], start);
+    	*p1 = new Process(config->process[i], end);
+    }
+    else{
+        start = p1->getRemainingTime();
+        end = p2->getRemainingTime();
+        *p1 = new Process(config->processes[i], start);
+    	*p2 = new Process(config->process[i], end);
+    }
+   
+    return true; // change this!
 }
 
 // PP - comparator for sorting read queue based on priority
 bool PpComparator::operator ()(const Process *p1, const Process *p2)
 {
-    // your code here!
-    return false; // change this!
+    //checking the priority
+    if(p1->getPriority() < p2->getPriority()){
+       start = p1->getRemainingTime();
+       end = p2->getRemainingTime();
+       *p1 = new Process(config->processes[i], start);
+       *p2 = new Process(config->process[i], end);
+       if(p1->getPriority == p2->getPriority()){
+           SjfComparator(p1,p2);
+        }
+    }
+    else if(p2->getPriority() < p1->getPriority()){
+       start = p2->getRemainingTime();
+       end = p1->getRemainingTime();
+       *p2 = new Process(config->processes[i], start);
+       *p1 = new Process(config->process[i], end);
+       if(p1->getPriority == p2->getPriority()){
+           SjfComparator(p1,p2);
+        }
+    }
+
+    // I/O bursts
+    else if(p1->getBurstTimes(p1->getBurstIndex()) <= 0){
+    	if(p1->getPriority() < p2->getPriority()){
+          start = p1->getRemainingTime();
+          end = p2->getRemainingTime();
+          *p1 = new Process(config->processes[i], start);
+          *p2 = new Process(config->process[i], end);
+        }
+        if(p1->getPriority == p2->getPriority()){
+           SjfComparator(p1,p2);
+        }
+    }
+    else if(p2->getBurstTimes(p2->getBurstIndex()) <= 0){
+        if(p2->getPriority() < p1->getPriority()){
+          start = p2->getRemainingTime();
+          end = p1->getRemainingTime();
+          *p2 = new Process(config->processes[i], start);
+          *p1 = new Process(config->process[i], end);
+        }
+        if(p1->getPriority == p2->getPriority()){
+           SjfComparator(p1,p2);
+        }
+        // if finish I/O burst and higher priority, check cpucore and see if it has a higher priority
+        // than the process currently running
+        if(p1->getState() == Process::State::IO){
+        	if(p1->getBurstTimes(p1->getBurstIndex()) <= 0 && p1->getPriority() < p2->getPriority()){
+        		if(p2->getState() == Process::State::Running){
+        			p2->interrupt();
+        			//do i pop to remove from CPU
+        			start == p1->getRemainingTime();
+        			*p1 = new Process(config->processes[i], start);
+        		}
+        	}
+        
+        }
+        if(p2->getState() == Process::State::IO){
+        	if(p2->getBurstTimes(p2->getBurstIndex()) <= 0 && p2->getPriority() < p1->getPriority()){
+        		if(p1->getState() == Process::State::Running){
+        			p1->interrupt();
+        			//do i pop to remove from CPU
+        			start == p2->getRemainingTime();
+        			*p2 = new Process(config->processes[i], start);
+        		}
+        	}
+        
+        }
+    }
+    
+    
+    
+    
+    
+    
+    return true; // change this!
+    
+    
 }
