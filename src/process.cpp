@@ -265,20 +265,15 @@ bool PpComparator::operator ()(const Process *p1, const Process *p2)
         			   *p2 = new Process(config->processes[i], start);
         		   }
         	   }
-        
-           
+
+
           }
-          
+
       }
-          
+
   }
-    
-    
-    
-    
-    
-    
+
     return true; // change this!
-    
-    
+
+
 }
