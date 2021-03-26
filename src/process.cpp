@@ -153,17 +153,20 @@ void Process::updateBurstTime(int burst_idx, uint32_t new_time)
 
 // Comparator methods: used in std::list sort() method
    
-   std::vector<Process*> processes;
-   SchedulerConfig *config = readConfigFile(argv[1]);
-   uint64_t start = currentTime();
-   uint64_t current = currentTime();
-   uint64_t end = start + getRemainingTime();
-   int i;
 // No comparator needed for FCFS or RR (ready queue never sorted)
 
 // SJF - comparator for sorting read queue based on shortest remaining CPU time
 bool SjfComparator::operator ()(const Process *p1, const Process *p2)
 {
+
+    if(p2 < p1){
+      return true;
+    }
+    else{
+      return false;
+    }
+    
+/*
     for(i = 0; i < config->numprocesses; i++){ 
        //first create processes based on total remaining cPU time
        if(p1->getRemainingTime()*1000 > p2->getRemainingTime()*1000){
@@ -192,13 +195,22 @@ bool SjfComparator::operator ()(const Process *p1, const Process *p2)
      	   *p2 = new Process(config->process[i], end);
        }
     }
-   
-    return true; // change this!
+    */
 }
 
 // PP - comparator for sorting read queue based on priority
 bool PpComparator::operator ()(const Process *p1, const Process *p2)
 {
+
+
+     if(p2 < p1){
+       return true;
+     }
+     
+     else{
+       return false;
+     }
+    /*
     for(i = 0; i < config->numprocesses; i++){ 
        //checking the priority
        if(p1->getPriority() < p2->getPriority()){
@@ -272,8 +284,9 @@ bool PpComparator::operator ()(const Process *p1, const Process *p2)
       }
 
   }
+  */
 
-    return true; // change this!
+    
 
 
 }
