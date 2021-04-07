@@ -21,7 +21,7 @@ typedef struct SchedulerData {
     bool all_terminated;
 } SchedulerData;
 
-void calculatePercentage(totalCpuTime);
+//void calculatePercentage(totalCpuTime);
 void isTerminated(SchedulerData *shared_data, std::vector<Process*> processes);
 void coreRunProcesses(uint8_t core_id, SchedulerData *data);
 int printProcessOutput(std::vector<Process*>& processes, std::mutex& mutex);
@@ -146,28 +146,21 @@ int main(int argc, char **argv)
         }
 
         //   - *Sort the ready queue (if needed - based on scheduling algorithm)
-        std::list<Process*> tempQueue;
 
-        if(shared_data->algorithm == ScheduleAlgorithm::PP)
+        if(!shared_data->ready_queue.empty())
         {
             std::lock_guard<std::mutex> lock(shared_data->mutex);
-            lowestPriority = 4;
-            lowestPriorityProcessRunning = 0;
-            std::list<Process* >::iterator it = shared_data->ready_queue.begin(); 
-            for(int i = 0; i < shared_data->ready_queue.size(); i++)
+            if(shared_data->algorithm == ScheduleAlgorithm::PP)
             {
-                std::list<Process* >::iterator it = shared_data->ready_queue.begin();
-                
+                PpComparator pp;
+                shared_data->ready_queue.sort(pp);
             }
-        }
 
-        else if(shared_data->algorithm == ScheduleAlgorithm::SJF)
-        {
-            std::lock_guard<std::mutex> lock(shared_data->mutex);
-            for(int i = 0; i < shared_data->ready_queue.size(); i++)
+            else if(shared_data->algorithm == ScheduleAlgorithm::SJF)
             {
-                
-            }
+                SjfComparator sjf;
+                shared_data->ready_queue.sort(sjf);
+            }  
         }
 
         for (int i = 0; i < processes.size(); i++) {
@@ -213,9 +206,9 @@ int main(int argc, char **argv)
     }
 
     // print final statistics
-    uint32_t throughputFirst = calculatePercentage(totalCpuTime) / 2;
+    //uint32_t throughputFirst = calculatePercentage(totalCpuTime) / 2;
     //  - CPU utilization
-    printf("the total percentage of tiem the CPU is computing %d", calculatePercentage(totalCpuTime));
+    //printf("the total percentage of tiem the CPU is computing %d", calculatePercentage(totalCpuTime));
     //  - Throughput
     //     - Average for first 50% of processes finished
     printf("the average number of processs that finsihed in the first half of the CPU computing time is ");
@@ -235,9 +228,9 @@ int main(int argc, char **argv)
     return 0;
 }
 
-void calculatePercentage(totalCpuTime){
-	totalCpuTime / 100;
-}
+//void calculatePercentage(totalCpuTime){
+//	totalCpuTime / 100;
+//}
 
 void isTerminated(SchedulerData *shared_data, std::vector<Process*> processes) {
     std::lock_guard<std::mutex> lock(shared_data->mutex);
@@ -283,11 +276,13 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
             uint64_t alreadyRemovedTime = 0;
             uint32_t savedCpuTime = currProcess->getCpuTime()*1000;
             uint32_t savedTurnaroundTime = currProcess->getTurnaroundTime()*1000;
+            
 
             currProcess->setState(Process::State::Running, currentTime());
             currProcess->setBurstStartTime(start);
 
             while(!currProcess->isInterrupted() && currProcess->getState() == Process::State::Running) {
+                currProcess->setCpuCore(core_id);
                 if (currProcess->getRemainingTime()*1000 <= 0) {
                     //Terminate
                     std::lock_guard<std::mutex> lock(shared_data->mutex);
@@ -316,6 +311,7 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
                 }
                 //usleep(5000);
             }
+            currProcess->setCpuCore(-1);
         }
         //usleep(5000);
     }
