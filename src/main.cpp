@@ -76,7 +76,7 @@ int main(int argc, char **argv)
         schedule_threads[i] = std::thread(coreRunProcesses, i, shared_data);
     }
 
-    // Main thread work goes here
+     // Main thread work goes here
     int num_lines = 0;
     while (!(shared_data->all_terminated))
     {
@@ -161,6 +161,7 @@ int main(int argc, char **argv)
                 
             }
         }
+
         //   - Determine if all processes are in the terminated state
         //   - * = accesses shared data (ready queue), so be sure to use proper synchronization
 
