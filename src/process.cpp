@@ -177,7 +177,7 @@ void Process::updateWaitTime(uint32_t new_time)
 bool SjfComparator::operator ()(const Process *p1, const Process *p2)
 {
 
-    if(p2 < p1){
+    if(p2->getRemainingTime() < p1->getRemainingTime()){
       return true;
     }
     else{
@@ -188,17 +188,11 @@ bool SjfComparator::operator ()(const Process *p1, const Process *p2)
 // PP - comparator for sorting read queue based on priority
 bool PpComparator::operator ()(const Process *p1, const Process *p2)
 {
-
-
-     if(p2 < p1){
+     if(p2->getPriority() < p1->getPriority()){
        return true;
      }
      
      else{
        return false;
      }
-
-    
-
-
 }
