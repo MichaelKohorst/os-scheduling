@@ -198,7 +198,7 @@ int main(int argc, char **argv)
 
     // print final statistics
     //  - CPU utilization
-    printf("The percentage of time the CPU is actually computing %", savedCpuTime);
+    printf("The percentage of time the CPU is actually computing %");
     //  - Throughput
     //     - Average for first 50% of processes finished
     printf("The number of processes that finsihed during the first half of the CPU running");
@@ -208,7 +208,7 @@ int main(int argc, char **argv)
     printf("The average ammount of time that it takes for a process to finish");
     
     //  - Average turnaround time
-    printf("the amount of time it takes for a process to finish");
+    printf("the amount of time it takes for a process to finish %", savedCpuTime);
     //  - Average waiting time
     printf("the ammount of time a process spends waiting in the ready queue");
 
