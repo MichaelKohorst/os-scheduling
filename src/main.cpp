@@ -94,7 +94,7 @@ int main(int argc, char **argv)
         uint64_t currTime = currentTime();
         //   - *Check if any processes need to move from NotStarted to Ready (based on elapsed time), and if so put that process in the ready queue
          for (int i = 0; i < processes.size(); i++) {
-            if (processes[i]->getStartTime()  >= currTime-start && processes[i]->getState() == Process::State::NotStarted){
+            if (processes[i]->getStartTime()  <= currTime-start && processes[i]->getState() == Process::State::NotStarted){
                 std::lock_guard<std::mutex> lock(shared_data->mutex);
                 processes[i]->setState(Process::State::Ready, currTime);
                 shared_data->ready_queue.push_back(processes[i]);
@@ -104,18 +104,18 @@ int main(int argc, char **argv)
 
         //   - *Check if any processes have finished their I/O burst, and if so put that process back in the ready queue
          for (int i = 0; i < processes.size(); i++) {
-            if (processStateToString(processes[i]->getState()).compare("i/o") && (currTime - processes[i]->getBurstStartTime() >= processes[i]->getBurstTimes(processes[i]->getBurstIndex())))  
+            if (processes[i]->getState() == Process::State::IO && (currTime - processes[i]->getBurstStartTime() >= processes[i]->getBurstTimes(processes[i]->getBurstIndex())))  
             {
                 std::lock_guard<std::mutex> lock(shared_data->mutex);
                 processes[i]->setState(Process::State::Ready, currTime);
                 shared_data->ready_queue.push_back(processes[i]);
-                processes[i]->setBurstIndex(processes[i]->getBurstIndex()+1);
+                //processes[i]->setBurstIndex(processes[i]->getBurstIndex()+1);
             }
         }
 
         //   - *Check if any running process need to be interrupted (RR time slice expires or newly ready process has higher priority)
         for (int i = 0; i < processes.size(); i++) {
-            if (processStateToString(processes[i]->getState()).compare("running") && shared_data->algorithm == ScheduleAlgorithm::RR && (currTime - processes[i]->getBurstStartTime() >= shared_data->time_slice))  
+            if (processes[i]->getState() == Process::State::Running && shared_data->algorithm == ScheduleAlgorithm::RR && (currTime - processes[i]->getBurstStartTime() >= shared_data->time_slice))  
             {
                 std::lock_guard<std::mutex> lock(shared_data->mutex);
                 processes[i]->interrupt();
@@ -125,7 +125,7 @@ int main(int argc, char **argv)
         int lowestPriorityProcessRunning = 0;
          for (int i = 0; i < processes.size(); i++)
          {
-             if(processStateToString(processes[i]->getState()).compare("running") && processes[i]->getPriority() > lowestPriority)
+             if(processes[i]->getState() == Process::State::Running && processes[i]->getPriority() > lowestPriority)
              {
                  lowestPriority = processes[i]->getPriority();
                  lowestPriorityProcessRunning = i;
@@ -171,12 +171,23 @@ int main(int argc, char **argv)
         }
 
         for (int i = 0; i < processes.size(); i++) {
-                Process* currProcess = processes[i];
-                if (currProcess->getState() != Process::State::Terminated && currProcess->getState() != Process::State::NotStarted) {
-                    uint32_t savedTurnaroundTime = currProcess->getTurnaroundTime()*1000;
-                    uint32_t timeStarted = currProcess->getTimeProcessStarted();
-                    currProcess->updateTurnTime(currentTime()-timeStarted);
-                }
+            Process* currProcess = processes[i];
+            if (currProcess->getState() != Process::State::Terminated && currProcess->getState() != Process::State::NotStarted) {
+                std::lock_guard<std::mutex> lock(shared_data->mutex);
+                uint32_t savedTurnaroundTime = currProcess->getTurnaroundTime()*1000;
+                uint32_t timeStarted = currProcess->getTimeProcessStarted();
+                currProcess->updateTurnTime(currentTime()-timeStarted);
+            }
+            if (currProcess->getRemainingTime() <= 0) {
+                std::lock_guard<std::mutex> lock(shared_data->mutex);
+                currProcess->setState(Process::State::Terminated, currentTime());
+            }
+            if (currProcess->getState() == Process::State::Ready) {
+                std::lock_guard<std::mutex> lock(shared_data->mutex);
+                int32_t savedWaitTime = currProcess->getWaitTime();
+                uint32_t timeStarted = currProcess->getTimeProcessStarted();
+                currProcess->updateWaitTime((currentTime() - timeStarted) + savedWaitTime);
+            }
         }
 
         //   - Determine if all processes are in the terminated state
@@ -191,7 +202,7 @@ int main(int argc, char **argv)
         num_lines = printProcessOutput(processes, shared_data->mutex);
 
         // sleep 50 ms
-        usleep(5000);
+        usleep(50000);
     }
 
 
@@ -258,7 +269,6 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
     //  - * = accesses shared data (ready queue), so be sure to use proper synchronization
 
     while (shared_data->all_terminated != true) {
-        uint64_t totalCpuTime = currentTime();
         Process* currProcess = NULL;
         {
             std::lock_guard<std::mutex> lock(shared_data->mutex);
@@ -302,14 +312,12 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
                         alreadyRemovedTime = currTime-start;
                         currProcess->updateCpuTime(savedCpuTime+(currTime-start));
                         currProcess->updateTurnTime((currTime-start)+savedTurnaroundTime);
-                        //std::cout << "CHANGED: " << currProcess->getBurstTimes(currProcess->getBurstIndex());
                     }
                 }
-                usleep(5000);
+                //usleep(5000);
             }
-            totalCpuTime = totalCpuTime - savedCpuTime;
         }
-        usleep(5000);
+        //usleep(5000);
     }
 
 } 
