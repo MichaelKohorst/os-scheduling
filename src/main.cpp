@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include "configreader.h"
 #include "process.h"
+#include <inttypes.h>
 
 // Shared data for all cores
 typedef struct SchedulerData {
@@ -197,12 +198,19 @@ int main(int argc, char **argv)
 
     // print final statistics
     //  - CPU utilization
+    printf("The percentage of time the CPU is actually computing %", savedCpuTime);
     //  - Throughput
     //     - Average for first 50% of processes finished
+    printf("The number of processes that finsihed during the first half of the CPU running");
     //     - Average for second 50% of processes finished
+    printf("The number of processes that finished during the second half of the CPU running");
     //     - Overall average
+    printf("The average ammount of time that it takes for a process to finish");
+    
     //  - Average turnaround time
+    printf("the amount of time it takes for a process to finish");
     //  - Average waiting time
+    printf("the ammount of time a process spends waiting in the ready queue");
 
 
     // Clean up before quitting program
