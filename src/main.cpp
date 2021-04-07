@@ -301,6 +301,7 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
                 }
                 usleep(5000);
             }
+            totalCpuTime = totalCpuTime - savedCpuTime;
         }
         usleep(5000);
     }
