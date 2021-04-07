@@ -21,6 +21,7 @@ typedef struct SchedulerData {
     bool all_terminated;
 } SchedulerData;
 
+void calculatePercentage(totalCpuTime);
 void isTerminated(SchedulerData *shared_data, std::vector<Process*> processes);
 void coreRunProcesses(uint8_t core_id, SchedulerData *data);
 int printProcessOutput(std::vector<Process*>& processes, std::mutex& mutex);
@@ -202,6 +203,7 @@ int main(int argc, char **argv)
 
     // print final statistics
     //  - CPU utilization
+    printf("the total percentage of tiem the CPU is computing %d", calculatePercentage(totalCpuTime));
     //  - Throughput
     //     - Average for first 50% of processes finished
     //     - Average for second 50% of processes finished
@@ -214,6 +216,10 @@ int main(int argc, char **argv)
     processes.clear();
 
     return 0;
+}
+
+void calculatePercentage(totalCpuTime){
+	totalCpuTime / 100;
 }
 
 void isTerminated(SchedulerData *shared_data, std::vector<Process*> processes) {
@@ -246,6 +252,7 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
     //  - * = accesses shared data (ready queue), so be sure to use proper synchronization
 
     while (shared_data->all_terminated != true) {
+        uint64_t totalCpuTime = currentTime();
         Process* currProcess = NULL;
         {
             std::lock_guard<std::mutex> lock(shared_data->mutex);
