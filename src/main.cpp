@@ -208,7 +208,7 @@ int main(int argc, char **argv)
     printf("The average ammount of time that it takes for a process to finish");
     
     //  - Average turnaround time
-    printf("the amount of time it takes for a process to finish %", savedCpuTime);
+    printf("the amount of time it takes for a process to finish %");
     //  - Average waiting time
     printf("the ammount of time a process spends waiting in the ready queue");
 
