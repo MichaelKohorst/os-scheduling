@@ -202,14 +202,20 @@ int main(int argc, char **argv)
     }
 
     // print final statistics
+    uint32_t throughputFirst = calculatePercentage(totalCpuTime) / 2;
     //  - CPU utilization
     printf("the total percentage of tiem the CPU is computing %d", calculatePercentage(totalCpuTime));
     //  - Throughput
     //     - Average for first 50% of processes finished
+    printf("the average number of processs that finsihed in the first half of the CPU computing time is ");
     //     - Average for second 50% of processes finished
+    printf("the average number of processs that finsihed in the second half of the CPU computing time is ");
     //     - Overall average
+    printf("the total average of processes that finished for the CPU computing time is ");
     //  - Average turnaround time
+    printf("The average turnaround time is");
     //  - Average waiting time
+    printf("The average wait time is");
 
 
     // Clean up before quitting program
