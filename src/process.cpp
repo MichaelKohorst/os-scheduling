@@ -4,6 +4,7 @@
 Process::Process(ProcessDetails details, uint64_t current_time)
 {
     int i;
+    time_process_started = 0;
     pid = details.pid;
     start_time = details.start_time;
     num_bursts = details.num_bursts;
@@ -36,6 +37,13 @@ Process::~Process()
     delete[] burst_times;
 }
 
+uint32_t Process::getTimeProcessStarted() const {
+    return time_process_started;
+}
+
+void Process::setTimeProcessStarted(uint32_t current_time) {
+    time_process_started = current_time;
+}
 
 uint32_t Process::getBurstTimes(uint16_t burst_index) const {
     return burst_times[burst_index];
@@ -150,6 +158,16 @@ void Process::updateBurstTime(int burst_idx, uint32_t new_time)
     burst_times[burst_idx] = new_time;
 }
 
+void Process::updateTurnTime(uint32_t new_time)
+{
+    turn_time = new_time;
+}
+
+void Process::updateWaitTime(uint32_t new_time)
+{
+    wait_time = new_time;
+}
+
 
 // Comparator methods: used in std::list sort() method
    
@@ -165,12 +183,12 @@ bool SjfComparator::operator ()(const Process *p1, const Process *p2)
     else{
       return false;
     }
-    
 }
 
 // PP - comparator for sorting read queue based on priority
 bool PpComparator::operator ()(const Process *p1, const Process *p2)
 {
+
 
      if(p2 < p1){
        return true;
@@ -179,6 +197,8 @@ bool PpComparator::operator ()(const Process *p1, const Process *p2)
      else{
        return false;
      }
-     
+
+    
+
 
 }

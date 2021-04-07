@@ -9,7 +9,6 @@
 #include <unistd.h>
 #include "configreader.h"
 #include "process.h"
-#include <inttypes.h>
 
 // Shared data for all cores
 typedef struct SchedulerData {
@@ -60,10 +59,15 @@ int main(int argc, char **argv)
     {
         Process *p = new Process(config->processes[i], start);
         processes.push_back(p);
+
+        if (p->getStartTime() > 0) {
+            p->setState(Process::State::NotStarted, currentTime());
+        }
         // If process should be launched immediately, add to ready queue
         if (p->getState() == Process::State::Ready)
         {
             shared_data->ready_queue.push_back(p);
+            p->setTimeProcessStarted(currentTime());
         }
     }
 
@@ -93,6 +97,7 @@ int main(int argc, char **argv)
                 std::lock_guard<std::mutex> lock(shared_data->mutex);
                 processes[i]->setState(Process::State::Ready, currTime);
                 shared_data->ready_queue.push_back(processes[i]);
+                processes[i]->setTimeProcessStarted(currTime);
             }
         }
 
@@ -103,6 +108,7 @@ int main(int argc, char **argv)
                 std::lock_guard<std::mutex> lock(shared_data->mutex);
                 processes[i]->setState(Process::State::Ready, currTime);
                 shared_data->ready_queue.push_back(processes[i]);
+                processes[i]->setBurstIndex(processes[i]->getBurstIndex()+1);
             }
         }
 
@@ -163,19 +169,17 @@ int main(int argc, char **argv)
             }
         }
 
+        for (int i = 0; i < processes.size(); i++) {
+                Process* currProcess = processes[i];
+                if (currProcess->getState() != Process::State::Terminated && currProcess->getState() != Process::State::NotStarted) {
+                    uint32_t savedTurnaroundTime = currProcess->getTurnaroundTime()*1000;
+                    uint32_t timeStarted = currProcess->getTimeProcessStarted();
+                    currProcess->updateTurnTime(currentTime()-timeStarted);
+                }
+        }
+
         //   - Determine if all processes are in the terminated state
         //   - * = accesses shared data (ready queue), so be sure to use proper synchronization
-
-        for (int i = 0; i < processes.size(); i++) {
-            if (processes[i]->getState() == Process::State::IO) {
-                std::lock_guard<std::mutex> lock(shared_data->mutex);
-                processes[i]->setState(Process::State::Ready, currentTime());
-                shared_data->ready_queue.push_back(processes[i]);
-                //std::cout << shared_data->ready_queue.size() << "\n";
-                processes[i]->setBurstIndex(processes[i]->getBurstIndex()+1);
-                //std::cout << "Processes size: " << processes.size() << "\n";
-            }
-        }
 
         isTerminated(shared_data, processes);
         if (shared_data->all_terminated == true) {
@@ -198,19 +202,12 @@ int main(int argc, char **argv)
 
     // print final statistics
     //  - CPU utilization
-    printf("The percentage of time the CPU is actually computing %");
     //  - Throughput
     //     - Average for first 50% of processes finished
-    printf("The number of processes that finsihed during the first half of the CPU running");
     //     - Average for second 50% of processes finished
-    printf("The number of processes that finished during the second half of the CPU running");
     //     - Overall average
-    printf("The average ammount of time that it takes for a process to finish");
-    
     //  - Average turnaround time
-    printf("the amount of time it takes for a process to finish %");
     //  - Average waiting time
-    printf("the ammount of time a process spends waiting in the ready queue");
 
 
     // Clean up before quitting program
@@ -262,7 +259,7 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
             uint64_t currTime = currentTime();
             uint64_t alreadyRemovedTime = 0;
             uint32_t savedCpuTime = currProcess->getCpuTime()*1000;
-            std::cout << "SAVED: " << savedCpuTime*1000;
+            uint32_t savedTurnaroundTime = currProcess->getTurnaroundTime()*1000;
 
             currProcess->setState(Process::State::Running, currentTime());
             currProcess->setBurstStartTime(start);
@@ -273,12 +270,15 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
                     std::lock_guard<std::mutex> lock(shared_data->mutex);
                     currProcess->setState(Process::State::Terminated, currentTime());
                     currProcess->updateProcess(0);
+                    currTime = currentTime();
+                    currProcess->updateTurnTime((currTime-start)+savedTurnaroundTime);
                 } else {
                     currTime = currentTime();
 
                     if (currProcess->getBurstTimes(currProcess->getBurstIndex()) <= 0) {
                         currProcess->setState(Process::State::IO, currentTime());
                         currProcess->setBurstIndex(currProcess->getBurstIndex()+1);
+                        currProcess->updateTurnTime((currTime-start)+savedTurnaroundTime);
                     } else {
                         if ((int32_t)currProcess->getBurstTimes(currProcess->getBurstIndex()) - (int32_t)(currTime-start-alreadyRemovedTime) <= 0) {
                             currProcess->updateBurstTime(currProcess->getBurstIndex(), 0);
@@ -288,44 +288,14 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
                         currProcess->updateProcess((currProcess->getRemainingTime()*1000) - (currTime-start-alreadyRemovedTime));
                         alreadyRemovedTime = currTime-start;
                         currProcess->updateCpuTime(savedCpuTime+(currTime-start));
+                        currProcess->updateTurnTime((currTime-start)+savedTurnaroundTime);
                         //std::cout << "CHANGED: " << currProcess->getBurstTimes(currProcess->getBurstIndex());
                     }
                 }
-                usleep(10000);
+                usleep(5000);
             }
-
-            /*
-            while (currTime - start < shared_data->time_slice && currTime - start < currProcess->getRemainingTime()) {
-                std::cout << currProcess->getBurstTimes(0) << "\n";
-                currTime = currProcess->getRemainingTime() - shared_data->time_slice/1000;
-            }
-            */
-           
-           /*
-            if (currProcess->getRemainingTime()*1000 - shared_data->time_slice <= 0) {
-                std::lock_guard<std::mutex> lock(shared_data->mutex);
-                currProcess->setState(Process::State::Terminated, currentTime());
-                currProcess->updateProcess(0);
-            } else {
-                std::lock_guard<std::mutex> lock(shared_data->mutex);
-                currProcess->setState(Process::State::IO, currentTime());
-                if (currProcess->getBurstTimes(currProcess->getBurstIndex()) < shared_data->time_slice) {
-                    currProcess->updateProcess((currProcess->getRemainingTime()*1000) - currProcess->getBurstTimes(currProcess->getBurstIndex()));
-                    currProcess->setBurstIndex(currProcess->getBurstIndex()+1);
-                    currProcess->updateCpuTime(currProcess->getCpuTime()*1000 + currProcess->getBurstTimes(currProcess->getBurstIndex()));
-                    uint32_t temp = currProcess->getCpuTime()*1000 + currProcess->getBurstTimes(currProcess->getBurstIndex());
-                    std::cout << "FIRST: " << temp;
-                } else {
-                    currProcess->updateProcess((currProcess->getRemainingTime()*1000) - shared_data->time_slice);
-                    currProcess->updateBurstTime(currProcess->getBurstIndex(), currProcess->getBurstTimes(currProcess->getBurstIndex()) - shared_data->time_slice);
-                    currProcess->updateCpuTime(currProcess->getCpuTime()*1000 + shared_data->time_slice);
-                    uint32_t temp = currProcess->getBurstTimes(currProcess->getBurstIndex());
-                    std::cout << " SECOND: " << temp;
-                }
-            }
-            */
         }
-        usleep(10000000);
+        usleep(5000);
     }
 
 } 
