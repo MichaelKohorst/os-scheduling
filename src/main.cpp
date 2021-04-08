@@ -237,7 +237,7 @@ int main(int argc, char **argv)
     {
         count = count + processes[i]->getTurnaroundTime();
     }
-    turnAroundTimeAverage = count/totalTime;
+    turnAroundTimeAverage = count/processes.size();
     thruPutAverage = totalTime/processes.size();
     for(int i = 0; i < processes.size();i++)
     {
@@ -246,7 +246,7 @@ int main(int argc, char **argv)
     }
     double temp;
     temp = count - CPUdifference;
-    CPUdifference = count/temp;
+    CPUdifference = temp/count*100;
 
     count = 0;
     for(int i = 0; i < processes.size();i++)
@@ -254,13 +254,12 @@ int main(int argc, char **argv)
         count = count + processes[i]->getWaitTime();
     }
     waitTimeAverage = count/processes.size();
-    std::cout << "The total percentage of time the CPU is computing: " << CPUdifference << "\n";
+    std::cout << "The total percentage of time the CPU is computing: " << CPUdifference << "%\n";
     std::cout << "The average number of processs that finished in the first half of the CPU computing time is : " << thruPutFirst << "\n";
     std::cout << "The average number of processs that finished in the second half of the CPU computing time is : " << thruPutSecond<< "\n";
     std::cout << "The total average of processes that finished for the CPU computing time is : " << thruPutAverage << "\n";
     std::cout << "The average turnaround time is: " << turnAroundTimeAverage << "\n";
     std::cout << "The average wait time is: " << waitTimeAverage << "\n";
-    std::cout << "Total time: " << totalTime << "\n";
 
     // Clean up before quitting program
     processes.clear();
