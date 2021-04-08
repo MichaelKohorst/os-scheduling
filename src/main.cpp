@@ -42,7 +42,7 @@ int main(int argc, char **argv)
     int i;
     SchedulerData *shared_data;
     std::vector<Process*> processes;
-
+    uint64_t endtime;
     // Read configuration file for scheduling simulation
     SchedulerConfig *config = readConfigFile(argv[1]);
 
@@ -198,7 +198,7 @@ int main(int argc, char **argv)
 
         isTerminated(shared_data, processes);
         if (shared_data->all_terminated == true) {
-            exit(0);
+            endtime = currentTime();
         }
 
         // output process status table
@@ -215,9 +215,7 @@ int main(int argc, char **argv)
         schedule_threads[i].join();
     }
 
-   
-
-    double totalTime = endtime - start;
+    double totalTime = (endtime - start)/1000;
     double halfTotalTime = totalTime/2;
     double turnAroundTimeAverage;
     double waitTimeAverage;
@@ -233,22 +231,22 @@ int main(int argc, char **argv)
             thruPutFirst++;
         }
     }
-    //thruPutFirst = thruPutFirst/halfTotalTime;
-    thruPutSecond = (processes.size()-thruPutFirst);///halfTotalTime;
+    thruPutSecond = (processes.size()-thruPutFirst);
     
     for(int i = 0; i < processes.size();i++)
     {
         count = count + processes[i]->getTurnaroundTime();
     }
-    turnAroundTimeAverage = count/processes.size();
-    thruPutAverage = turnAroundTimeAverage/totalTime;
+    turnAroundTimeAverage = count/totalTime;
+    thruPutAverage = totalTime/processes.size();
     for(int i = 0; i < processes.size();i++)
     {
         CPUdifference = CPUdifference + processes[i]->getCpuTime();
+        
     }
-
-    CPUdifference = count - CPUdifference;
-    CPUdifference = count/CPUdifference;
+    double temp;
+    temp = count - CPUdifference;
+    CPUdifference = count/temp;
 
     count = 0;
     for(int i = 0; i < processes.size();i++)
@@ -262,6 +260,7 @@ int main(int argc, char **argv)
     std::cout << "The total average of processes that finished for the CPU computing time is : " << thruPutAverage << "\n";
     std::cout << "The average turnaround time is: " << turnAroundTimeAverage << "\n";
     std::cout << "The average wait time is: " << waitTimeAverage << "\n";
+    std::cout << "Total time: " << totalTime << "\n";
 
     // Clean up before quitting program
     processes.clear();
@@ -278,8 +277,7 @@ void isTerminated(SchedulerData *shared_data, std::vector<Process*> processes) {
         }
     }
     if (count == processes.size()) {
-        shared_data->all_terminated = true;
-        
+        shared_data->all_terminated = true; 
     }
 }
 
