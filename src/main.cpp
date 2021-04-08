@@ -224,8 +224,8 @@ int main(int argc, char **argv)
             thruPutFirst++;
         }
     }
-    thruPutFirst = thruPutFirst/halfTotalTime;
-    thruPutSecond = (processes.size()-thruPutFirst)/halfTotalTime;
+    //thruPutFirst = thruPutFirst/halfTotalTime;
+    thruPutSecond = (processes.size()-thruPutFirst);///halfTotalTime;
     
     for(int i = 0; i < processes.size();i++)
     {
