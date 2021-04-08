@@ -21,7 +21,7 @@ typedef struct SchedulerData {
     bool all_terminated;
 } SchedulerData;
 
-//void calculatePercentage(totalCpuTime);
+
 void isTerminated(SchedulerData *shared_data, std::vector<Process*> processes);
 void coreRunProcesses(uint8_t core_id, SchedulerData *data);
 int printProcessOutput(std::vector<Process*>& processes, std::mutex& mutex);
@@ -42,6 +42,7 @@ int main(int argc, char **argv)
     int i;
     SchedulerData *shared_data;
     std::vector<Process*> processes;
+    uint64_t endtime;
 
     // Read configuration file for scheduling simulation
     SchedulerConfig *config = readConfigFile(argv[1]);
@@ -188,7 +189,7 @@ int main(int argc, char **argv)
 
         isTerminated(shared_data, processes);
         if (shared_data->all_terminated == true) {
-            exit(0);
+            endtime = currentTime();
         }
 
         // output process status table
@@ -205,32 +206,59 @@ int main(int argc, char **argv)
         schedule_threads[i].join();
     }
 
-    // print final statistics
-    //uint32_t throughputFirst = calculatePercentage(totalCpuTime) / 2;
-    //  - CPU utilization
-    //printf("the total percentage of tiem the CPU is computing %d", calculatePercentage(totalCpuTime));
-    //  - Throughput
-    //     - Average for first 50% of processes finished
-    printf("the average number of processs that finsihed in the first half of the CPU computing time is ");
-    //     - Average for second 50% of processes finished
-    printf("the average number of processs that finsihed in the second half of the CPU computing time is ");
-    //     - Overall average
-    printf("the total average of processes that finished for the CPU computing time is ");
-    //  - Average turnaround time
-    printf("The average turnaround time is");
-    //  - Average waiting time
-    printf("The average wait time is");
+   
 
+    double totalTime = endtime - start;
+    double halfTotalTime = totalTime/2;
+    double turnAroundTimeAverage;
+    double waitTimeAverage;
+    double thruPutFirst=0;
+    double thruPutSecond=0;
+    double thruPutAverage=0;
+    double count=0;
+    double CPUdifference =0;
+    for(int i = 0; i < processes.size();i++)
+    {
+        if(processes[i]->getTurnaroundTime() < halfTotalTime)
+        {
+            thruPutFirst++;
+        }
+    }
+    thruPutFirst = thruPutFirst/halfTotalTime;
+    thruPutSecond = (processes.size()-thruPutFirst)/halfTotalTime;
+    
+    for(int i = 0; i < processes.size();i++)
+    {
+        count = count + processes[i]->getTurnaroundTime();
+    }
+    turnAroundTimeAverage = count/processes.size();
+    thruPutAverage = turnAroundTimeAverage/totalTime;
+    for(int i = 0; i < processes.size();i++)
+    {
+        CPUdifference = CPUdifference + processes[i]->getCpuTime();
+    }
+
+    CPUdifference = count - CPUdifference;
+    CPUdifference = count/CPUdifference;
+
+    count = 0;
+    for(int i = 0; i < processes.size();i++)
+    {
+        count = count + processes[i]->getWaitTime();
+    }
+    waitTimeAverage = count/processes.size();
+    std::cout << "The total percentage of time the CPU is computing: " << CPUdifference << "\n";
+    std::cout << "The average number of processs that finished in the first half of the CPU computing time is : " << thruPutFirst << "\n";
+    std::cout << "The average number of processs that finished in the second half of the CPU computing time is : " << thruPutSecond<< "\n";
+    std::cout << "The total average of processes that finished for the CPU computing time is : " << thruPutAverage << "\n";
+    std::cout << "The average turnaround time is: " << turnAroundTimeAverage << "\n";
+    std::cout << "The average wait time is: " << waitTimeAverage << "\n";
 
     // Clean up before quitting program
     processes.clear();
 
     return 0;
 }
-
-//void calculatePercentage(totalCpuTime){
-//	totalCpuTime / 100;
-//}
 
 void isTerminated(SchedulerData *shared_data, std::vector<Process*> processes) {
     std::lock_guard<std::mutex> lock(shared_data->mutex);
@@ -242,7 +270,7 @@ void isTerminated(SchedulerData *shared_data, std::vector<Process*> processes) {
     }
     if (count == processes.size()) {
         shared_data->all_terminated = true;
-        exit(0);
+        
     }
 }
 
