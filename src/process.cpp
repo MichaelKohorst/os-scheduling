@@ -4,6 +4,8 @@
 Process::Process(ProcessDetails details, uint64_t current_time)
 {
     int i;
+    already_removed_time = 0;
+    entered_ready_time = 0;
     time_process_started = 0;
     pid = details.pid;
     start_time = details.start_time;
@@ -35,6 +37,22 @@ Process::Process(ProcessDetails details, uint64_t current_time)
 Process::~Process()
 {
     delete[] burst_times;
+}
+
+uint64_t Process::getAlreadyRemovedTime() const {
+    return already_removed_time;
+}
+
+void Process::setAlreadyRemovedTime(uint64_t current_time) {
+    already_removed_time = current_time;
+}
+
+uint32_t Process::getEnteredReadyTime() const {
+    return entered_ready_time;
+}
+
+void Process::setEnteredReadyTime(uint32_t current_time) {
+    entered_ready_time = current_time;
 }
 
 uint32_t Process::getTimeProcessStarted() const {

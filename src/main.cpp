@@ -42,7 +42,6 @@ int main(int argc, char **argv)
     int i;
     SchedulerData *shared_data;
     std::vector<Process*> processes;
-    uint64_t endtime;
 
     // Read configuration file for scheduling simulation
     SchedulerConfig *config = readConfigFile(argv[1]);
@@ -70,6 +69,8 @@ int main(int argc, char **argv)
         {
             shared_data->ready_queue.push_back(p);
             p->setTimeProcessStarted(currentTime());
+            p->setEnteredReadyTime(currentTime());
+            p->setAlreadyRemovedTime(0);
         }
     }
 
@@ -100,6 +101,8 @@ int main(int argc, char **argv)
                 processes[i]->setState(Process::State::Ready, currTime);
                 shared_data->ready_queue.push_back(processes[i]);
                 processes[i]->setTimeProcessStarted(currTime);
+                processes[i]->setEnteredReadyTime(currTime);
+                processes[i]->setAlreadyRemovedTime(0);
             }
         }
 
@@ -110,6 +113,8 @@ int main(int argc, char **argv)
                 std::lock_guard<std::mutex> lock(shared_data->mutex);
                 processes[i]->setState(Process::State::Ready, currTime);
                 shared_data->ready_queue.push_back(processes[i]);
+                processes[i]->setEnteredReadyTime(currTime);
+                processes[i]->setAlreadyRemovedTime(0);
                 //processes[i]->setBurstIndex(processes[i]->getBurstIndex()+1);
             }
         }
@@ -175,12 +180,16 @@ int main(int argc, char **argv)
             if (currProcess->getRemainingTime() <= 0) {
                 std::lock_guard<std::mutex> lock(shared_data->mutex);
                 currProcess->setState(Process::State::Terminated, currentTime());
+                currProcess->setEnteredReadyTime(currentTime());
+                currProcess->setAlreadyRemovedTime(0);
             }
             if (currProcess->getState() == Process::State::Ready) {
                 std::lock_guard<std::mutex> lock(shared_data->mutex);
-                int32_t savedWaitTime = currProcess->getWaitTime();
-                uint32_t timeStarted = currProcess->getTimeProcessStarted();
-                currProcess->updateWaitTime((currentTime() - timeStarted) + savedWaitTime);
+                uint32_t savedWaitTime = currProcess->getWaitTime()*1000;
+                uint32_t timeStarted = currProcess->getEnteredReadyTime();
+                uint64_t alreadyRemovedTime = currProcess->getAlreadyRemovedTime();
+                currProcess->updateWaitTime((currentTime()-timeStarted-alreadyRemovedTime) + savedWaitTime);
+                currProcess->setAlreadyRemovedTime(currentTime()-timeStarted);
             }
         }
 
@@ -189,7 +198,7 @@ int main(int argc, char **argv)
 
         isTerminated(shared_data, processes);
         if (shared_data->all_terminated == true) {
-            endtime = currentTime();
+            exit(0);
         }
 
         // output process status table

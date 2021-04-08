@@ -24,6 +24,8 @@ private:
     int32_t cpu_time;           // total time spent running on a CPU core
     int32_t remain_time;        // CPU time remaining until terminated
     uint32_t time_process_started;
+    uint32_t entered_ready_time;
+    uint64_t already_removed_time;
     uint64_t launch_time;       // actual time in ms (since epoch) that process was 'launched'
     // you are welcome to add other private data fields here if you so choose
 
@@ -31,6 +33,8 @@ public:
     Process(ProcessDetails details, uint64_t current_time);
     ~Process();
 
+    uint64_t getAlreadyRemovedTime() const;
+    uint32_t getEnteredReadyTime() const;
     uint32_t getTimeProcessStarted() const;
     uint16_t getBurstIndex() const;
     uint32_t getBurstTimes(uint16_t burst_index) const;
@@ -46,6 +50,8 @@ public:
     double getCpuTime() const;
     double getRemainingTime() const;
 
+    void setAlreadyRemovedTime(uint64_t current_time);
+    void setEnteredReadyTime(uint32_t current_time);
     void setTimeProcessStarted(uint32_t current_time);
     void setBurstIndex(uint16_t index);
     void setBurstStartTime(uint64_t current_time);
